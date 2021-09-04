@@ -13,18 +13,6 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_data import FRS, SynthFRS
-
-if len(FRS.years) == 0:
-    print("Using synthetic dataset.")
-    SynthFRS.save(
-        "https://github.com/nikhilwoodruff/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5",
-        2018,
-    )
-    dataset = SynthFRS
-else:
-    dataset = FRS
-warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 DATA_LAST_YEAR = 2018  # this is the last year data are extrapolated for
@@ -96,9 +84,9 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     # create a simulation
     if data is None or "frs":
         if reform is None:
-            sim = Microsimulation(dataset=dataset)
+            sim = Microsimulation(year=year)
         else:
-            sim = Microsimulation(reform, dataset=dataset)
+            sim = Microsimulation(*(reform,), year=year)
     else:
         # pass PopulationSim a data argument
         pass
@@ -119,10 +107,6 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         1,
     )
 
-    benefits = sim.calc("benefits", map_to="household").values
-
-    # Compute marginal tax rates (can only do on earned income now)
-
     # Put MTRs, income, tax liability, and other variables in dict
     length = sim.calc("household_weight").size
     tax_dict = {
@@ -134,6 +118,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         - sim.calc("earned_income", map_to="household"),
         "market_income": market_income,
         "total_tax_liab": sim.calc("income_tax", map_to="household").values,
+        "total_benefits": sim.calc("benefits", map_to="household").values,
         "payroll_tax_liab": sim.calc(
             "national_insurance", map_to="household"
         ).values,
